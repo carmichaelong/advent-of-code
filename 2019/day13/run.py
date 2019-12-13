@@ -10,13 +10,6 @@ class IntcodeState:
     pointer_ind: int
     relative_base: int
 
-@dataclass
-class BoardState:
-    board: np.array
-    pos: np.array
-    heading: str
-    painted: np.array
-
 def parse_op(op):
     digits = np.zeros(4)
     
@@ -46,8 +39,7 @@ def calc_array(input_array, phase=None,
                input_val=None, op_ind=None, 
                relative_base=None):
 
-    output = []    
-    #op_ind = 0
+    output = []
     while op_ind <= input_array.size:
         op = input_array[op_ind]
         digits = parse_op(op)
@@ -76,8 +68,6 @@ def calc_array(input_array, phase=None,
             params = parse_param_mode(digits, params, op_ind, relative_base)
             output.append(input_array[params[0]])
             op_ind += 2
-            if len(output) == 2:
-                break
         
         elif op == 5:
             params = np.array(input_array[op_ind+1:op_ind+3])
@@ -131,93 +121,73 @@ def run_program(program, input_val=None, op_ind=None, relative_base=None):
 
     return output_array, modified_prog, op_ind, relative_base
 
-def init_board_state(row, col):
-    board = np.zeros((row, col), dtype=int)
-    pos = np.array([np.floor_divide(row,2), np.floor_divide(col,2)], dtype=int)
-    heading = 'up'
-    painted = np.zeros_like(board)
-    return BoardState(board, pos, heading, painted)
-
-def paint_board(board_state, prog_output):
-    board = board_state.board
-    pos = board_state.pos
-    painted = board_state.painted
-    board[pos[0], pos[1]] = prog_output[0]
-    painted[pos[0], pos[1]] = 1
-    
-    return board_state
-
-def update_pos_heading(board_state, prog_output):
-    cur_heading = board_state.heading
-    cur_pos = board_state.pos
-    
-    if cur_heading == 'up':
-        if prog_output[1] == 0:
-            cur_heading = 'left'
-        elif prog_output[1] == 1:
-            cur_heading = 'right'
-    
-    elif cur_heading == 'left':
-        if prog_output[1] == 0:
-            cur_heading = 'down'
-        elif prog_output[1] == 1:
-            cur_heading = 'up'
-            
-    elif cur_heading == 'down':
-        if prog_output[1] == 0:
-            cur_heading = 'right'
-        elif prog_output[1] == 1:
-            cur_heading = 'left'
-            
-    elif cur_heading == 'right':
-        if prog_output[1] == 0:
-            cur_heading = 'up'
-        elif prog_output[1] == 1:
-            cur_heading = 'down'
-    
-    board_state.heading = cur_heading
-    
-    if cur_heading == 'up':
-        cur_pos[0] -= 1
-    elif cur_heading == 'left':
-        cur_pos[1] -= 1
-    elif cur_heading == 'down':
-        cur_pos[0] += 1
-    elif cur_heading == 'right':
-        cur_pos[1] += 1
-    
-    board_state.pos = cur_pos
-    
-    return board_state
-
-def update_board_state(board_state, prog_output):
-    board_state = paint_board(board_state, prog_output)
-    board_state = update_pos_heading(board_state, prog_output)
-    return board_state
-
 def update_intcode_state(intcode_state, modified_prog, op_ind, relative_base):
     intcode_state.program = modified_prog
     intcode_state.pointer_ind = op_ind
     intcode_state.relative_base = relative_base
     return intcode_state
-    
-program = np.loadtxt('input.txt', delimiter=',', dtype='int64')
-program_padded = np.zeros(10*program.size, dtype='int64')
-program_padded[0:program.size] = program
-intcode_state = IntcodeState(program_padded, 0, 0)
-board_state = init_board_state(100, 100)
-board_state.board[board_state.pos[0], board_state.pos[1]] = 1 #part 2
-while True:
-    input_color = board_state.board[board_state.pos[0], board_state.pos[1]]
-    output, modified_prog, op_ind, relative_base = \
-        run_program(intcode_state.program, input_val=input_color,
-                    op_ind=intcode_state.pointer_ind,
-                    relative_base=intcode_state.relative_base)
-    intcode_state = update_intcode_state(intcode_state, modified_prog, op_ind, relative_base)
-    if len(output) == 2:
-        board_state = update_board_state(board_state, output)
-    else:
-        break
 
-#answer_1 = np.sum(board_state.painted)
-plt.imshow(board_state.board)
+def find_paddle_ball_loc(output):
+    tile_info_start = 0
+    paddle_found = False
+    ball_found = False
+    while tile_info_start < len(output):
+        this_tile_info = output[tile_info_start:tile_info_start+3]
+        if this_tile_info[2] == 3:
+            loc_paddle = np.array(this_tile_info)
+            paddle_found = True
+        elif this_tile_info[2] == 4:
+            loc_ball = np.array(this_tile_info)
+            ball_found = True
+        if paddle_found and ball_found:
+            break
+        tile_info_start += 3
+    return loc_paddle, loc_ball
+
+def get_score(output):
+    tile_info_start = 0
+
+    while tile_info_start < len(output):
+        this_tile_info = output[tile_info_start:tile_info_start+3]
+        if this_tile_info[0] == -1 and this_tile_info[1] == 0:
+            return this_tile_info[2]
+        tile_info_start += 3
+
+program = np.loadtxt('input.txt', delimiter=',', dtype=int)
+program_padded = np.zeros(300*program.size, dtype=int)
+#program_padded[0:program.size] = program
+#intcode_state = IntcodeState(program_padded, 0, 0)
+#
+#output, modified_prog, op_ind, relative_base = \
+#    run_program(intcode_state.program,
+#                op_ind=intcode_state.pointer_ind,
+#                relative_base=intcode_state.relative_base)
+#intcode_state = update_intcode_state(intcode_state, modified_prog, op_ind, relative_base)
+#
+#answer_1 = output[2::3].count(2)
+
+program_padded_2 = np.zeros_like(program_padded)
+program_padded_2[0:program.size] = program
+program_padded_2[0] = 2
+intcode_state_2 = IntcodeState(program_padded_2,0,0)
+
+input_val = 0
+while True:
+    output, modified_prog, op_ind, relative_base = \
+        run_program(intcode_state_2.program,
+                    input_val=input_val,
+                    op_ind=0,
+                    relative_base=0)
+    intcode_state_2 = update_intcode_state(intcode_state_2, modified_prog, op_ind, relative_base)
+    loc_paddle, loc_ball = find_paddle_ball_loc(output)
+    if loc_ball[0] < loc_paddle[0]:
+        input_val = 1
+    elif loc_ball[0] > loc_paddle[0]:
+        input_val = -1
+    else:
+        input_val = 0
+    num_blocks = output[2::3].count(2)
+    print('blocks remaining = ' + str(num_blocks))
+    print('score = ' + str(get_score(output)))
+    if num_blocks == 0:
+        break
