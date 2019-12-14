@@ -41,16 +41,6 @@ def load_reaction_file(filename):
                 
     return names, input_matrix, output_matrix
 
-def is_done(names, input_need, output_made, num_fuel):
-    fuel_ind = names.index('FUEL')
-    if not output_made[fuel_ind] >= num_fuel:
-        return False
-    for i in range(output_made.size):
-        if not names[i] == 'ORE':
-            if input_need[i] > output_made[i]:
-                return False
-    return True
-
 def calc_ore_needed(names, input_matrix, output_matrix, num_fuel=1):
     num_reactions = np.zeros((len(names),1))
         
@@ -66,9 +56,6 @@ def calc_ore_needed(names, input_matrix, output_matrix, num_fuel=1):
     output_made_prev = output_made.copy()
     
     while True:
-#        if is_done(names, input_need, output_made, num_fuel):
-#            break
-#        for i in range(num_reactions.size):
         for i in np.nonzero(input_need > output_made)[0]:
             if not names[i] == 'ORE':
                 if input_need[i] > output_made[i]:
